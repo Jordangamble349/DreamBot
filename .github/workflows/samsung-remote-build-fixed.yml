@@ -1,0 +1,37 @@
+name: Build Samsung TV Remote APK (fixed)
+on:
+  push:
+    branches: [build-pocket-tv-remote]
+    paths:
+      - .github/workflows/samsung-remote-build-fixed.yml
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Extract embedded source
+        run: |
+          mkdir -p samsung-remote-project
+          sed -n '/B64SOURCE$/,/^[[:space:]]*B64SOURCE$/p' .github/workflows/samsung-pocket-tv-apk.yml | sed '1d;$d;s/^[[:space:]]*//' | base64 -d | xz -d | tar -x -C samsung-remote-project
+      - name: Prepare Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          sdkmanager --licenses < /dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Build debug APK
+        working-directory: samsung-remote-project
+        run: gradle --no-daemon assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Samsung-Pocket-TV-Remote-APK
+          path: samsung-remote-project/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
